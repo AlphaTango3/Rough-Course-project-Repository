@@ -1,0 +1,114 @@
+---
+title: "Reproducible Reseach Assiignment 1"
+output: html_document
+author: "Abhay"
+date: "2026-03-31"
+---
+
+##loading and processing the data
+
+```{r echo=TRUE}
+ data <-read.csv("activity.csv")
+ data$date <- as.Date(data$date)
+```
+
+##mean total no. of steps
+```{r echo=TRUE}
+steps_per_day <- aggregate(steps ~ date, data = data, sum, na.rm = TRUE)
+head(steps_per_day)
+```
+##histogram making
+```{r histogram,echo=TRUE}
+hist(steps_per_day$steps,
+     main = "Total Steps per Day",
+     xlab = "Steps",
+     col = "blue")
+```
+##mean & median calculation
+```{r mean_&_median, echo=TRUE}
+mean_steps <- mean(steps_per_day$steps)
+median_steps <- median(steps_per_day$steps)
+
+mean_steps
+median_steps
+```
+
+##average daily activity pattern
+
+```{r avg_daily_pattern, echo=TRUE}
+interval_avg <- aggregate(steps ~ interval, data = data, mean, na.rm = TRUE)
+```
+
+##time series plot
+```{r echo=TRUE}
+plot(interval_avg$interval, interval_avg$steps,
+     type = "l",
+     xlab = "Interval",
+     ylab = "Average Steps")
+```
+##max interval
+
+{r max_intervalecho=TRUE}interval_avg[which.max(interval_avg$steps), ]
+
+##report the total number of missing values
+
+```{r echo=TRUE}
+sum(is.na(data$steps))
+```
+
+##mean per interval imputing
+
+```{r echo=TRUE}
+filled_data <- data
+for(i in 1:nrow(filled_data)){
+  if(is.na(filled_data$steps[i])){
+    interval_val <- filled_data$interval[i]
+    mean_val <- interval_avg$steps[interval_avg$interval == interval_val]
+    filled_data$steps[i] <- mean_val
+  }
+}
+```
+##histogram after imputing
+
+```{r echo=TRUE}
+steps_per_day_filled <- aggregate(steps ~ date, data = filled_data, sum)
+
+hist(steps_per_day_filled$steps,
+     main = "Total Steps per Day (Filled)",
+     xlab = "Steps",
+     col = "green")
+```
+
+##mean, median mode after imputing
+
+mean_filled <- mean(steps_per_day_filled$steps)
+```{r echo=TRUE}
+steps_per_day_filled <- aggregate(steps ~ date, data = filled_data, sum)
+median_filled <- median(steps_per_day_filled$steps)
+mean_filled <- mean(steps_per_day_filled$steps)
+  
+mean_filled
+median_filled
+```
+## are there diff between weekdays and weekends
+```{r echo=TRUE}
+filled_data$day <- ifelse(weekdays(filled_data$date) %in% c("Saturday", "Sunday"),
+                          "weekend", "weekday")
+
+filled_data$day <- as.factor(filled_data$day)
+```
+
+## avg steps by interval and day types
+library(lattice)
+
+```{r average_steps_by_interval, echo=TRUE}
+avg_day_type <- aggregate(steps ~ interval + day, data = filled_data, mean)
+
+xyplot(steps ~ interval | day,
+       data = avg_day_type,
+       type = "l",
+       layout = c(1,2),
+       xlab = "Interval",
+       ylab = "Steps")
+```
+##end if sccript
