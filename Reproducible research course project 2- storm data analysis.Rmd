@@ -1,0 +1,76 @@
+---
+title: "Impact of Severe Weather Events on Population Health and Economy"
+author: "Abhay"
+output: html_document
+date: "2026-04-01"
+---
+
+## Synopsis
+
+This analysis explores the NOAA Storm Database to identify which weather events have the greatest impact on public health and economic damage in the United States. Population health impact is measured using fatalities and injuries, while economic consequences are measured using property and crop damage. Data were aggregated by event type to determine the most harmful categories. Results show that a small number of event types account for the majority of damage. Tornadoes are the leading cause of injuries and fatalities. Floods and hurricanes contribute the most to economic loss. The findings can help prioritize disaster preparedness efforts.
+
+## Data Processing
+The damage variables (PROPDMG and CROPDMG) require transformation using their respective exponent variables (PROPDMGEXP and CROPDMGEXP). These exponents represent the magnitude of the damage (e.g., K = thousand, M = million, B = billion). A conversion function was used to translate these into numeric multipliers so that total economic damage could be calculated accurately.
+
+```{r echo=TRUE}
+data <- read.csv("repdata-data-StormData.csv")
+```
+
+```{r echo=TRUE}
+data <- data[, c("EVTYPE","FATALITIES","INJURIES","PROPDMG","PROPDMGEXP","CROPDMG","CROPDMGEXP")]
+```
+
+```{r echo=TRUE}
+convert_exp <- function(exp) {
+  if (exp %in% c("H","h")) return(1e2)
+  if (exp %in% c("K","k")) return(1e3)
+  if (exp %in% c("M","m")) return(1e6)
+  if (exp %in% c("B","b")) return(1e9)
+  return(1)
+}
+```
+
+```{r echo=TRUE}
+data$prop_multiplier <- sapply(data$PROPDMGEXP, convert_exp)
+data$crop_multiplier <- sapply(data$CROPDMGEXP, convert_exp)
+
+data$prop_damage <- data$PROPDMG * data$prop_multiplier
+data$crop_damage <- data$CROPDMG * data$crop_multiplier
+```
+
+```{r echo=TRUE}
+health <- aggregate(cbind(FATALITIES, INJURIES) ~ EVTYPE, data, sum)
+health$total <- health$FATALITIES + health$INJURIES
+
+economic <- aggregate(cbind(prop_damage, crop_damage) ~ EVTYPE, data, sum)
+economic$total <- economic$prop_damage + economic$crop_damage
+```
+
+## Results
+
+```{r Top_10_event_types_ranked_by_total_fatalities_and_injuries, echo=TRUE}
+top_health <- head(health[order(-health$total), ], 10)
+
+barplot(top_health$total,
+        names.arg = top_health$EVTYPE,
+        las=2,
+        main="Top Events Affecting Population Health",
+        ylab="Total Casualties")
+```
+
+Figure 1: Top 10 event types ranked by total fatalities and injuries.
+
+```{r Top_10_event_types_ranked_by_total property_and_crop_damage, echo=TRUE}
+top_econ <- head(economic[order(-economic$total), ], 10)
+
+top_econ$total_billions <- top_econ$total / 1e9
+
+barplot(top_econ$total_billions,
+        names.arg = top_econ$EVTYPE,
+        las=2,
+        cex.names=0.7,
+        main="Top Events Causing Economic Damage",
+        ylab="Damage (Billion USD)")
+```
+
+Figure 2: Top 10 event types ranked by total economic damage (property + crop).
